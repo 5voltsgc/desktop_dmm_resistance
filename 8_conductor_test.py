@@ -89,7 +89,7 @@ my_instrument.read_termination = '\n'
 
 
 
-for k in range(0,10):
+for k in range(0,100):
         
 #     print("Test#1 - continuity")
     GPIO.output(Cable_1A_Black, GPIO.LOW)  
