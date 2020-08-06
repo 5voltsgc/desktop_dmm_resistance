@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import RPi.GPIO as GPIO
 import datetime
+import time
 import pyvisa
 
 
@@ -27,6 +28,8 @@ Cable_2B_Black = 21
 Cable_2B_White = 20
 Cable_2B_Red = 16
 Cable_2B_Green = 12
+
+SleepTimeL = 1
 
 resistance_List=[]
 for k in range(0,24):
@@ -61,7 +64,7 @@ def relays_off():
 
 def read_resistance():
     my_instrument.write('MEAS:FRES? 100 OHM')
-    
+    time.sleep(SleepTimeL)
 #     # the text from the meter is b'+9.77261930E+00'
     res = float(my_instrument.read_bytes(15))
     global res_readings 
@@ -73,6 +76,8 @@ def read_resistance():
 def read_crosstalk():
     my_instrument.write('MEAS:FRES? 100000000 OHM') #100M Ohms
     
+#     Found the DMM can be queried too fast so this is to slow reading
+    time.sleep(SleepTimeL)
     # the text from the meter is b'+9.77261930E+00'
     res = float(my_instrument.read_bytes(15))
     global res_readings 
@@ -88,7 +93,7 @@ my_instrument.read_termination = '\n'
 
 
 
-for k in range(0,100):
+for k in range(0,10):
         
 #     print("Test#1 - continuity")
     GPIO.output(Cable_1A_Black, GPIO.LOW)  
