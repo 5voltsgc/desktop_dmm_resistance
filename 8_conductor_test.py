@@ -63,10 +63,9 @@ def read_resistance():
     my_instrument.write('MEAS:FRES? 100 OHM')
     
 #     # the text from the meter is b'+9.77261930E+00'
-    res = str(my_instrument.read_bytes(15))
+    res = float(my_instrument.read_bytes(15))
     global res_readings 
-    res_value = float(res.strip("b'"))
-    res_readings +=  str(res_value) + ","
+    res_readings +=  str(res) + ","
     
     #add error checking like hard coded resitance upper and lower values
 
@@ -75,16 +74,16 @@ def read_crosstalk():
     my_instrument.write('MEAS:FRES? 100000000 OHM') #100M Ohms
     
     # the text from the meter is b'+9.77261930E+00'
-    res = str(my_instrument.read_bytes(15))
+    res = float(my_instrument.read_bytes(15))
     global res_readings 
-    res_value = float(res.strip("b'"))
-    res_readings +=  str(res_value) + ","
+    
+    res_readings +=  str(res) + ","
     
 #     #add error checking like hard coded resitance upper and lower values    
 
 #open desktop multimeter - change ip address as needed, for different networks
 rm = pyvisa.ResourceManager()
-my_instrument = rm.open_resource('TCPIP0::192.168.0.43::inst0::INSTR')
+my_instrument = rm.open_resource('TCPIP0::192.168.000.43::inst0::INSTR')
 my_instrument.read_termination = '\n'
 
 
@@ -109,14 +108,14 @@ for k in range(0,100):
 
 #     print("Test#3 - continuity")
     GPIO.output(Cable_1A_White,GPIO.LOW)  
-    GPIO.output(Cable_1B_Black,GPIO.LOW) 
+    GPIO.output(Cable_1B_White,GPIO.LOW)
     read_resistance()
     relays_off()
 
 
 #     print("Test#4 -  cross talk")
     GPIO.output(Cable_1A_White,GPIO.LOW)  
-    GPIO.output(Cable_1B_White,GPIO.LOW) 
+    GPIO.output(Cable_1B_Black,GPIO.LOW)
     GPIO.output(Cable_1B_Red,GPIO.LOW) 
     GPIO.output(Cable_1B_Green,GPIO.LOW) 
     read_crosstalk()
