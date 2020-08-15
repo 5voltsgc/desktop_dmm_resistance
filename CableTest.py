@@ -30,6 +30,9 @@ for i in pin_list:
 #varibles
 NumConductors = 4 # must be 8 or less, starts at 1 for 1 relay
 SleepTimeL = 20
+units_under_test = "testing "+datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+filename =  "results1-8-" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + ".csv"
+
 
 # turn off all relays, even ones not turned on to simplify functions 
 def relays_off():
@@ -77,15 +80,9 @@ def turn_on_relays (relay_pin):
         GPIO.output(pin_list[relay_pin],GPIO.HIGH)
     else:
         GPIO.output(pin_list[relay_pin],GPIO.LOW)
-    
-#Testing loop of vaibles
-# res_test()
-# cross_talk()
 
 def relay_check():
     x = True
-
-
     while x == True:
          # add error handling for letters purhaps exit infinate loop
          
@@ -102,4 +99,54 @@ def relay_check():
             else:
                 print("Please enter a number between 0 - 15")
 
-    
+def get_menu_choice():
+    def print_menu():       # Your menu design here
+        print(30 * "-", "Cable Resistance Check", 30 * "-")
+        print("1. Begin Testing ")
+        print("2. Change UUT name - Currently: " + str(units_under_test))
+        print("3. Change Number Conductors in in test - Current: " + str(NumConductors))
+        print("4. Relay Test - Activate relays ")        
+        print("5. Exit from the script ")
+        print(84 * "-")
+
+    loop = True
+    global units_under_test
+    int_choice = -1
+
+    while loop:          # While loop which will keep going until loop = False
+        print_menu()    # Displays menu
+        choice = input("Enter your choice [1-4]: ")
+
+        if choice == '1':
+            int_choice = 1
+            loop = False
+        elif choice == '2':
+            choice = ''
+            while len(choice) == 0:
+                units_under_test = input("Enter new name of UUT: ")
+                
+            int_choice = 2
+            loop = False
+        elif choice == '3':
+            choice = ''
+            while len(choice) == 0:
+                choice = input("Enter a single filename of a file with custom folders list: ")
+            int_choice = 3
+            loop = False
+        elif choice == '4':
+            choice = ''
+            while len(choice) == 0:
+                choice = input("Enter a single filename of a conf file: ")
+            int_choice = 4
+            loop = False
+        elif choice == '5':
+            int_choice = -1
+            print("Exiting..")
+            loop = False  # This will make the while loop to end
+        else:
+            # Any inputs other than values 1-4 we print an error message
+            input("Wrong menu selection. Enter any key to try again..")
+    return [int_choice, choice]
+
+
+print(get_menu_choice())    
