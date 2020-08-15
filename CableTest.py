@@ -56,11 +56,13 @@ def cross_talk():
     for j in range(NumConductors):
         #Turn on A side relay
         GPIO.output(pin_list[j],GPIO.LOW)
-        
+        print(pin_list[j+8])
         #Turn on all B side relays except for matching relay
         for k in range(8, 16):
-                GPIO.output(pin_list[k],GPIO.LOW)
-                print(k)
+#             print("B Side:" + str(pin_list[k]))
+            GPIO.output(pin_list[k],GPIO.LOW)
+        GPIO.output(pin_list[15-j],GPIO.HIGH)
+        
         time.sleep(SleepTimeL)
         relays_off() 
             
