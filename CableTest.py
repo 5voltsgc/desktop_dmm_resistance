@@ -28,8 +28,8 @@ for i in pin_list:
     GPIO.output(i,GPIO.HIGH)
 
 #varibles
-NumConductors = 8 # must be 8 or less, starts at 1 for 1 relay
-SleepTimeL = 1
+NumConductors = 4 # must be 8 or less, starts at 1 for 1 relay
+SleepTimeL = 20
 
 # turn off all relays, even ones not turned on to simplify functions 
 def relays_off():
@@ -39,7 +39,10 @@ def relays_off():
 # turn off all relays, even ones not turned on to simplify functions 
 def relays_on():
     for j in range(NumConductors):
-        GPIO.output(pin_list[j],GPIO.LOW)
+        if GPIO.input(pin_list[j]): #if true - which means off 
+            GPIO.output(pin_list[j],GPIO.LOW)
+        else:
+            GPIO.output(pin_list[j],GPIO.HIGH)
 
 #ResTest()
 def res_test():
@@ -57,22 +60,46 @@ def cross_talk():
         #Turn on A side relay
         GPIO.output(pin_list[j],GPIO.LOW)
         print(pin_list[j+8])
+        
         #Turn on all B side relays except for matching relay
         for k in range(8, 16):
-#             print("B Side:" + str(pin_list[k]))
             GPIO.output(pin_list[k],GPIO.LOW)
+        
+        # Turn off matching relay for Cross talk check
         GPIO.output(pin_list[15-j],GPIO.HIGH)
         
         time.sleep(SleepTimeL)
         relays_off() 
-            
 
+def turn_on_relays (relay_pin):    
+
+    if not GPIO.input(pin_list[relay_pin]): #True is relay off low level
+        GPIO.output(pin_list[relay_pin],GPIO.HIGH)
+    else:
+        GPIO.output(pin_list[relay_pin],GPIO.LOW)
+    
 #Testing loop of vaibles
-cross_talk()
-time.sleep(SleepTimeL)
-relays_off()        
+# res_test()
+# cross_talk()
+
+def relay_check():
+    x = True
 
 
-#before ending program cleanup GPIO 
-GPIO.cleanup()
+    while x == True:
+         # add error handling for letters purhaps exit infinate loop
+         
+        pin_relay = input("Enter a relay to turn on or off (between 0 - 15):")
+        
+        if pin_relay.isalpha():
+          x = False
+          print("exit relay check mode")
+          relays_off() 
+          GPIO.cleanup()
+        else:
+            if int(pin_relay) < 16 and int(pin_relay) > -1:
+                turn_on_relays(int(pin_relay))
+            else:
+                print("Please enter a number between 0 - 15")
+
     
