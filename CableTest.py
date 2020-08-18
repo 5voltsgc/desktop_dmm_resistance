@@ -11,6 +11,7 @@ import RPi.GPIO as GPIO
 import datetime
 import pyvisa
 import time
+import numpy as np
 
 #setup reading Desktop DMM change ip address as needed, for different networks
 rm = pyvisa.ResourceManager()
@@ -19,6 +20,7 @@ my_instrument.read_termination = '\n'
 
 #Set up the GPIO on the Raspberry Pi
 GPIO.setmode(GPIO.BCM)
+GPIO.setwarnings(False)
 
 # Relay # [0   1   2   3   4   5   6  7  8   9  10  11  12  13  14  15]
 # Relay # [1   2   3   4   5   6   7  8  9  10  11  12  13  14  15  16]
@@ -28,48 +30,84 @@ for i in pin_list:
     GPIO.output(i,GPIO.HIGH)
 
 #varibles
-NumConductors = 4 # must be 8 or less, starts at 1 for 1 relay
-SleepTimeL = 20
+num_conductors = 8 # must be 8 or less, starts at 1 for 1 relay
+SleepTimeL = 1
 units_under_test = "testing "+datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-filename =  "results1-8-" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + ".csv"
+test_count = 0
+
+uut_name = input("Please enter name of sample to be tested:")
+filename =  uut_name + "-" + datetime.datetime.now().strftime("%y%m%d-%H%M%S") + ".csv"
+
+res_reading = np.empty(num_conductors)
+ins_reading = np.empty(num_conductors)
+base_line = np.empty(num_conductors)
+print_var = ""
+
+#Create log file header
+log_header = "time, count, "
+
+for j in range(0, num_conductors):
+    log_header = log_header + "Resistance Conductor-" + str(j+1) + ","
+
+log_header = log_header + "Pass/Fail ,"
+
+for k in range(0, num_conductors):
+    log_header = log_header + "insulation-Conductor" + str(k+1) + ","
+    
+log_header = log_header + "Pass/Fail"
 
 
 # turn off all relays, even ones not turned on to simplify functions 
 def relays_off():
-    for j in pin_list:        
-        GPIO.output(j,GPIO.HIGH)
+    for e in pin_list:        
+        GPIO.output(e,GPIO.HIGH)
 
 # turn off all relays, even ones not turned on to simplify functions 
 def relays_on():
-    for j in range(NumConductors):
-        if GPIO.input(pin_list[j]): #if true - which means off 
-            GPIO.output(pin_list[j],GPIO.LOW)
-        else:
-            GPIO.output(pin_list[j],GPIO.HIGH)
+    for l in pin_list:
+        GPIO.output(pin_list[l],GPIO.LOW)
+
 
 #ResTest()
+        
 def res_test():
-    for u in range(5):
-        for j in range(NumConductors):
-            GPIO.output(pin_list[j],GPIO.LOW)
+    global test_count
+    global print_var
+    
+    res_test_pass = True
+    test_count += 1
+    print_var = str(datetime.datetime.now()) + "," + str(test_count)+ ","
+    
+    for m in range(num_conductors):
+        GPIO.output(pin_list[m],GPIO.LOW)
+        GPIO.output(pin_list[15-m] ,GPIO.LOW)
+        time.sleep(SleepTimeL)
+        my_instrument.write('MEAS:FRES? 100 OHM')
+        res_reading[m] = round(float(my_instrument.read_bytes(15)), 4)
+        print_var = print_var + str(res_reading[m]) + ","
+        
+        #add the pass fail when base line is done
+#         if 2 , (res_reading[m] - base_line[m]):
+#             res_test_pass = False
+            
+        relays_off()
+    print_var = print_var + str(res_test_pass) +  ","
+    print(print_var)
 
-            GPIO.output(pin_list[15-j] ,GPIO.LOW)
-            time.sleep(SleepTimeL)
-            relays_off() 
 
-#ResTest()
+
 def cross_talk():
-    for j in range(NumConductors):
+    for d in range(num_conductors):
         #Turn on A side relay
         GPIO.output(pin_list[j],GPIO.LOW)
-        print(pin_list[j+8])
+        print(pin_list[d+8])
         
         #Turn on all B side relays except for matching relay
-        for k in range(8, 16):
-            GPIO.output(pin_list[k],GPIO.LOW)
+        for r in range(8, 16):
+            GPIO.output(pin_list[r],GPIO.LOW)
         
         # Turn off matching relay for Cross talk check
-        GPIO.output(pin_list[15-j],GPIO.HIGH)
+        GPIO.output(pin_list[15-d],GPIO.HIGH)
         
         time.sleep(SleepTimeL)
         relays_off() 
@@ -89,64 +127,14 @@ def relay_check():
         pin_relay = input("Enter a relay to turn on or off (between 0 - 15):")
         
         if pin_relay.isalpha():
-          x = False
-          print("exit relay check mode")
-          relays_off() 
-          GPIO.cleanup()
+            x = False
+            print("exit relay check mode")
+            relays_off() 
+            GPIO.cleanup()
         else:
             if int(pin_relay) < 16 and int(pin_relay) > -1:
                 turn_on_relays(int(pin_relay))
             else:
                 print("Please enter a number between 0 - 15")
 
-def get_menu_choice():
-    def print_menu():       # Your menu design here
-        print(30 * "-", "Cable Resistance Check", 30 * "-")
-        print("1. Begin Testing ")
-        print("2. Change UUT name - Currently: " + str(units_under_test))
-        print("3. Change Number Conductors in in test - Current: " + str(NumConductors))
-        print("4. Relay Test - Activate relays ")        
-        print("5. Exit from the script ")
-        print(84 * "-")
-
-    loop = True
-    global units_under_test
-    int_choice = -1
-
-    while loop:          # While loop which will keep going until loop = False
-        print_menu()    # Displays menu
-        choice = input("Enter your choice [1-4]: ")
-
-        if choice == '1':
-            int_choice = 1
-            loop = False
-        elif choice == '2':
-            choice = ''
-            while len(choice) == 0:
-                units_under_test = input("Enter new name of UUT: ")
-                
-            int_choice = 2
-            loop = False
-        elif choice == '3':
-            choice = ''
-            while len(choice) == 0:
-                choice = input("Enter a single filename of a file with custom folders list: ")
-            int_choice = 3
-            loop = False
-        elif choice == '4':
-            choice = ''
-            while len(choice) == 0:
-                choice = input("Enter a single filename of a conf file: ")
-            int_choice = 4
-            loop = False
-        elif choice == '5':
-            int_choice = -1
-            print("Exiting..")
-            loop = False  # This will make the while loop to end
-        else:
-            # Any inputs other than values 1-4 we print an error message
-            input("Wrong menu selection. Enter any key to try again..")
-    return [int_choice, choice]
-
-
-print(get_menu_choice())    
+res_test()
