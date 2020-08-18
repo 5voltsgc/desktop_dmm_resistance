@@ -38,7 +38,7 @@ insulation_limit = 5.0e+6  #5Meg or 5,000,000 ohms
 base_line_samples = 2
 
 
-uut_name = input("Please enter name of sample to be tested:")
+uut_name = input("Please enter name of sample to be tested (Will be used in file name):")
 filename =  uut_name + "-" + datetime.datetime.now().strftime("%y%m%d-%H%M%S") + ".csv"
 
 res_reading = np.empty(num_conductors)
@@ -100,7 +100,7 @@ def res_test():
 
 
 #Baseline Test()  
-def base_line():
+def establish_base_line():
     baseline_sample = np.empty([num_conductors,base_line_samples])
 
     for o in range(0,base_line_samples):
@@ -211,9 +211,10 @@ def results():
         f.close
         print(print_var)
         
-    
+ 
+# here is where the testing loop begins 
 try:
-    base_line()#need to add the insulation check
+    establish_base_line()
     print(bsline)
     print(ins_reading)
     
@@ -236,9 +237,3 @@ except KeyboardInterrupt: # If CTRL+C is pressed, exit cleanly:
     GPIO.cleanup() # cleanup all GPIO    
     print("Log file name is: " + str(filename))
     
-    
-    
-
-
-
-GPIO.cleanup()
