@@ -31,9 +31,12 @@ for i in pin_list:
 
 #varibles
 num_conductors = 8 # must be 8 or less, starts at 1 for 1 relay
-SleepTimeL = 1
+SleepTimeL = .75
 units_under_test = "testing "+datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 test_count = 0
+insulation_limit = 5.0e+6  #5Meg or 5,000,000 ohms
+
+
 
 uut_name = input("Please enter name of sample to be tested:")
 filename =  uut_name + "-" + datetime.datetime.now().strftime("%y%m%d-%H%M%S") + ".csv"
@@ -83,8 +86,8 @@ def res_test():
         GPIO.output(pin_list[15-m] ,GPIO.LOW)
         time.sleep(SleepTimeL)
         my_instrument.write('MEAS:FRES? 100 OHM')
-        res_reading[m] = round(float(my_instrument.read_bytes(15)), 4)
-        print_var = print_var + str(res_reading[m]) + ","
+        res_reading[m] = float(my_instrument.read_bytes(15))
+        print_var = print_var + str(round(res_reading[m]),4) + ","
         
         #add the pass fail when base line is done
 #         if 2 , (res_reading[m] - base_line[m]):
@@ -96,22 +99,37 @@ def res_test():
 
 
 
-def cross_talk():
+def insulation_test():
+    global print_var
+    ins_test_pass = True
+    
     for d in range(num_conductors):
         #Turn on A side relay
-        GPIO.output(pin_list[j],GPIO.LOW)
-        print(pin_list[d+8])
+        GPIO.output(pin_list[d],GPIO.LOW)
         
-        #Turn on all B side relays except for matching relay
+        #Turn on all B side relays
         for r in range(8, 16):
             GPIO.output(pin_list[r],GPIO.LOW)
         
         # Turn off matching relay for Cross talk check
         GPIO.output(pin_list[15-d],GPIO.HIGH)
         
+        #give time for relays to make contact before measurment
         time.sleep(SleepTimeL)
-        relays_off() 
 
+        my_instrument.write('MEAS:FRES? 100000000 OHM') #100M Ohms
+        ins_reading[d] = float(my_instrument.read_bytes(15))
+        
+        #test if the insulation resistance is less then limit
+        if ins_reading[d] < insulation_limit:
+            ins_test_pass = False
+               
+        print_var = print_var + str(ins_reading[d]) + ","
+
+        
+        relays_off() 
+    print_var = print_var + str(ins_test_pass)
+    print(print_var)
 def turn_on_relays (relay_pin):    
 
     if not GPIO.input(pin_list[relay_pin]): #True is relay off low level
@@ -137,4 +155,5 @@ def relay_check():
             else:
                 print("Please enter a number between 0 - 15")
 
-res_test()
+insulation_test()
+GPIO.cleanup()
