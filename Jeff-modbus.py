@@ -53,7 +53,7 @@ my_instrument.read_termination = '\n'
 
 # variables
 NUM_CONDUCTORS = 8  # must be 8 or less, starts at 1 for 1 relay
-sleep_time_DMM = .5  # Add a settling time for the relays, before DMM reading
+sleep_time_DMM = 1  # Add a settling time for the relays, before DMM reading
 sleep_time_relay = .025
 units_under_test = "testing " + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 test_count = 0
@@ -108,8 +108,10 @@ def establish_base_line():
             time.sleep(sleep_time_relay)
             board.on(16-n)
 
+            time.sleep(sleep_time_DMM)
             my_instrument.write('MEAS:FRES? 100 OHM')
             baseline_sample[n, o] = float(my_instrument.read_bytes(15))
+            # print(baseline_sample[n, o])
 
             board.off(n+1)
 
