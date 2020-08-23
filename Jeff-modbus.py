@@ -53,22 +53,14 @@ my_instrument.read_termination = '\n'
 
 # varibles
 NUM_CONDUCTORS = 8  # must be 8 or less, starts at 1 for 1 relay
-SleepTimeL = .35  # found the relay board must have a small delay between calls to actuate relays
+SleepTimeL = .05  # found the relay board must have a small delay between calls to actuate relays
 units_under_test = "testing " + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 test_count = 0
 INSULATION_LIMIT = 5.0e+6  # 5Meg or 5,000,000 ohms
 RESISTANCE_LIMIT = 2  # Ohms
 base_line_samples = 2  # Number of samples to be taken for base line 10 = 10 samples of each relay
 
-# for j in range(1, NUM_CONDUCTORS * 2 + 1):
-#     print(j)
-#     board.on(j)
-#     time.sleep(.25)
-#     board.off(j)
-#     time.sleep(.25)
-#
-# board.on_all()
-# board.off_all()
+
 uut_name = "hardcoded"
 # uut_name = input("Please enter name of sample to be tested (Will be used in file name):")
 filename = uut_name + "-" + datetime.datetime.now().strftime("%y%m%d-%H%M%S") + ".csv"
@@ -76,8 +68,8 @@ filename = uut_name + "-" + datetime.datetime.now().strftime("%y%m%d-%H%M%S") + 
 # Create numpy arrays and print
 res_reading = np.empty(NUM_CONDUCTORS)
 ins_reading = np.empty(NUM_CONDUCTORS)
-base_line = np.empty(NUM_CONDUCTORS)
-bsline = np.empty(NUM_CONDUCTORS)
+base_line_resistance = np.empty(NUM_CONDUCTORS)
+average_base_line_insulation = np.empty(NUM_CONDUCTORS)
 print_var = ""
 # Create log file header
 log_header = "time, count, "
@@ -91,6 +83,14 @@ for k in range(0, NUM_CONDUCTORS):
 
 log_header = log_header + "Pass/Fail"
 
+# def relay_on(relay_number):
+#     time.sleep(SleepTimeL)
+#     try:
+#         board.on(relay_number)
+#     except pyvisa.errors.VisaIOError :
+
+
+
 
 def establish_base_line():
     baseline_sample = np.empty([NUM_CONDUCTORS, base_line_samples])
@@ -99,27 +99,60 @@ def establish_base_line():
 
         for n in range(0, NUM_CONDUCTORS):
             # print(str(n+1) + "-" + str(16-n))
-            time.sleep(SleepTimeL)
+            # time.sleep(SleepTimeL)
             board.on(n+1)
-            time.sleep(SleepTimeL)
+            # time.sleep(SleepTimeL)
             board.on(16-n)
 
             my_instrument.write('MEAS:FRES? 100 OHM')
             baseline_sample[n, o] = float(my_instrument.read_bytes(15))
 
             board.off(n+1)
-            time.sleep(SleepTimeL)
+            # time.sleep(SleepTimeL)
             board.off(16-n)
 
     # Insulation Test for the base line
     # Turn on all B side relays
     for r in range(9, 19):
         board.on(r)
+        # time.sleep(SleepTimeL)
+
+    for e in range(0, NUM_CONDUCTORS):
+
+        # Turn on A side relay
+        board.on(e + 1)
+        # time.sleep(SleepTimeL)
+
+        # Turn off matching relay for insulation check
+        board.off(16 - e)
+        # time.sleep(SleepTimeL)
+
+        my_instrument.write('MEAS:FRES? 100000000 OHM')  # 100M Ohms
+        ins_reading[e] = float(my_instrument.read_bytes(15))
+        board.on(16 - e)
+        # time.sleep(SleepTimeL)
+        board.off(e + 1)
+        # time.sleep(SleepTimeL)
+
+
+    board.off_all()
+    global average_base_line_insulation
+    average_base_line_insulation = baseline_sample.mean(axis=1)
+
+    # return bsline
+
+
+def insulation_test():
+    global print_var
+    ins_test_pass = True
+    board.off_all()
+
+    # Turn on all B side relays
+    for r in range(9, 19):
+        board.on(r)
         time.sleep(SleepTimeL)
 
     for e in range(0, NUM_CONDUCTORS):
-        time.sleep(SleepTimeL)
-
         # Turn on A side relay
         board.on(e + 1)
         time.sleep(SleepTimeL)
@@ -128,60 +161,39 @@ def establish_base_line():
         board.off(16 - e)
         time.sleep(SleepTimeL)
 
+        # give time for relays to make contact before measurement
+        time.sleep(SleepTimeL)
 
         my_instrument.write('MEAS:FRES? 100000000 OHM')  # 100M Ohms
-        # ins_reading[e] = float(my_instrument.read_bytes(15))
+        ins_reading[e] = float(my_instrument.read_bytes(15))
+
         board.on(16 - e)
         time.sleep(SleepTimeL)
         board.off(e + 1)
-
-    board.off_all()
-    global bsline
-    bsline = baseline_sample.mean(axis=1)
-
-    # return bsline
-
-
-def insulation_test():
-    global print_var
-    ins_test_pass = True
-
-    for d in range(NUM_CONDUCTORS):
-        for r in range(9, 19):
-            board.on(r)
-            time.sleep(SleepTimeL)
-
-        for e in range(0, NUM_CONDUCTORS):
-            time.sleep(SleepTimeL)
-
-            # Turn on A side relay
-            board.on(e + 1)
-            time.sleep(SleepTimeL)
-
-            # Turn off matching relay for insulation check
-            board.off(16 - e)
-            time.sleep(SleepTimeL)
-
-
-
-        # give time for relays to make contact before measurment
         time.sleep(SleepTimeL)
 
-        my_instrument.write('MEAS:FRES? 100000000 OHM')  # 100M Ohms
-        ins_reading[d] = float(my_instrument.read_bytes(15))
-
         # test if the insulation resistance is less then limit
-        if ins_reading[d] < INSULATION_LIMIT:
+        if ins_reading[e] < INSULATION_LIMIT:
             ins_test_pass = False
 
-        print_var = print_var + str(ins_reading[d]) + ","
+        print_var = print_var + str(ins_reading[e]) + ","
 
-        board.off_all()
+    board.off_all()
     print_var = print_var + str(ins_test_pass)
 
 
+def resistance_test():
+    # test resistance between two matching conductors, it should be less than 100 ohms, so set the DMM range to match
+    global test_count
+    global print_var
+    global RESISTANCE_LIMIT
+
+    resistance_test_pass = True
 
 
 
-establish_base_line()
-print(bsline)
+# establish_base_line()
+insulation_test()
+
+# print(average_base_line_insulation)
+print(print_var)
